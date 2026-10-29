@@ -38,8 +38,10 @@ body {
 .wrap { max-width: 1040px; margin: 0 auto; padding: 0 16px; }
 
 .topbar { border-bottom: 1px solid var(--border); background: var(--card); }
-.topbar .wrap { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding-top: 14px; padding-bottom: 14px; }
+.topbar .wrap { display: flex; align-items: center; flex-wrap: wrap; justify-content: space-between; gap: 12px; padding-top: 14px; padding-bottom: 14px; }
 h1 { font-size: 20px; margin: 0; }
+.top-actions { display: flex; align-items: center; gap: 8px; }
+.top-actions button { padding: 7px 14px; }
 h2 { font-size: 16px; margin: 0 0 12px; }
 
 main.wrap { padding-top: 20px; padding-bottom: 20px; display: grid; gap: 16px; }
@@ -114,8 +116,6 @@ tbody tr:last-child td { border-bottom: 0; }
 .cell-name { display: block; color: var(--muted); font-size: 12px; max-width: 220px; overflow: hidden; text-overflow: ellipsis; }
 .empty { margin-top: 4px; }
 
-.footer-card { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; flex-wrap: wrap; }
-.footer-card > div { flex: 1; min-width: 260px; }
 .foot { padding-bottom: 32px; }
 
 @media (max-width: 760px) {

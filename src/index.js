@@ -127,7 +127,17 @@ async function trade(db, id, body) {
   return { side, symbol: quote.symbol, shares, price: quote.price, amount: amount / 100 };
 }
 
-async function getPortfolio(db, id) {
+async function resetPortfolio(db, id) {
+  await loadPortfolio(db, id);
+  await db.batch([
+    db.prepare('DELETE FROM transactions WHERE portfolio_id = ?').bind(id),
+    db.prepare('DELETE FROM holdings WHERE portfolio_id = ?').bind(id),
+    db.prepare('UPDATE portfolios SET cash_cents = 0, deposited_cents = 0 WHERE id = ?').bind(id),
+  ]);
+}
+
+// Pass fresh to skip the quote cache (the Refresh button).
+async function getPortfolio(db, id, { fresh = false } = {}) {
   const portfolio = await loadPortfolio(db, id);
   const [{ results: holdings }, { results: transactions }] = await Promise.all([
     db.prepare('SELECT * FROM holdings WHERE portfolio_id = ? ORDER BY symbol').bind(id).all(),
@@ -136,7 +146,7 @@ async function getPortfolio(db, id) {
 
   const positions = await Promise.all(
     holdings.map(async (h) => {
-      const quote = await getQuote(`${h.symbol}:${h.exchange}`).catch(() => null);
+      const quote = await getQuote(`${h.symbol}:${h.exchange}`, { fresh }).catch(() => null);
       const cost = h.cost_cents / 100;
       const value = quote ? h.shares * quote.price : null;
       return {
@@ -188,18 +198,24 @@ async function route(request, env) {
   if (parts[0] !== 'api') throw new HttpError(404, 'Not found');
 
   if (parts[1] === 'quote' && parts.length === 2 && method === 'GET') {
-    return json(await quoteOrError(url.searchParams.get('symbol')));
+    return json(await quoteOrError(url.searchParams.get('symbol'), { fresh: url.searchParams.has('fresh') }));
   }
   if (parts[1] === 'portfolios') {
     if (parts.length === 2 && method === 'POST') return json(await createPortfolio(db, await readBody(request)), 201);
     const id = parts[2];
-    if (parts.length === 3 && method === 'GET') return json(await getPortfolio(db, id));
+    if (parts.length === 3 && method === 'GET') {
+      return json(await getPortfolio(db, id, { fresh: url.searchParams.has('fresh') }));
+    }
     if (parts.length === 3 && method === 'DELETE') {
       await db.batch(
         ['transactions', 'holdings'].map((table) => db.prepare(`DELETE FROM ${table} WHERE portfolio_id = ?`).bind(id))
           .concat(db.prepare('DELETE FROM portfolios WHERE id = ?').bind(id)),
       );
       return json({ ok: true });
+    }
+    if (parts.length === 4 && method === 'POST' && parts[3] === 'reset') {
+      await resetPortfolio(db, id);
+      return json(await getPortfolio(db, id));
     }
     if (parts.length === 4 && method === 'POST' && parts[3] === 'deposit') {
       await deposit(db, id, await readBody(request));

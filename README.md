@@ -1,4 +1,4 @@
-# Paper Trader
+# Kenny's Paper Trader
 
 A paper trading website. Pick how much simulated cash to start with, add more whenever you like,
 type a stock symbol, and buy or sell at the current market price. Portfolios are saved in a
@@ -15,6 +15,7 @@ fits in Cloudflare's free tier.
 - Buy and sell, including fractional shares, at the live price
 - Holdings with average cost, today's change, market value and gain/loss; prices refresh every 30 seconds
 - Full trade and deposit history
+- **Refresh** button for up-to-the-second prices, and **Restart** to wipe everything back to $0
 - Every ticker links to its Google Finance page
 - Each browser gets its own portfolio; a private link opens it on another device
 
@@ -71,11 +72,12 @@ don't need a network connection or a Cloudflare account.
 
 | Method | Path | Body | |
 | --- | --- | --- | --- |
-| `GET` | `/api/quote?symbol=AAPL` | | Live quote |
+| `GET` | `/api/quote?symbol=AAPL` | | Live quote (add `&fresh=1` to skip the 15s cache) |
 | `POST` | `/api/portfolios` | `{ "startingCash": 10000 }` | Create a portfolio, returns `{ id }` |
-| `GET` | `/api/portfolios/:id` | | Cash, positions with live prices, history |
+| `GET` | `/api/portfolios/:id` | | Cash, positions with live prices, history (`?fresh=1` skips the cache) |
 | `POST` | `/api/portfolios/:id/deposit` | `{ "amount": 500 }` | Add cash |
 | `POST` | `/api/portfolios/:id/trade` | `{ "symbol": "AAPL", "side": "buy", "shares": 10 }` | Buy or sell at the current price |
+| `POST` | `/api/portfolios/:id/reset` | | Set cash to $0 and erase holdings and history |
 | `DELETE` | `/api/portfolios/:id` | | Delete the portfolio |
 
 ## Project layout

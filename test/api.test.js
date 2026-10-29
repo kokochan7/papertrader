@@ -117,6 +117,25 @@ test('fractional shares and input validation', async () => {
   assert.equal((await call('GET', '/portfolios/does-not-exist')).status, 404);
 });
 
+test('reset sets cash to $0 and clears holdings and history', async () => {
+  const { data: { id } } = await call('POST', '/portfolios', { startingCash: 1000 });
+  await call('POST', `/portfolios/${id}/trade`, { symbol: 'KO', side: 'buy', shares: 2 });
+  const { status, data: p } = await call('POST', `/portfolios/${id}/reset`);
+  assert.equal(status, 200);
+  assert.equal(p.cash, 0);
+  assert.equal(p.deposited, 0);
+  assert.equal(p.total, 0);
+  assert.equal(p.gain, 0);
+  assert.deepEqual(p.positions, []);
+  assert.deepEqual(p.transactions, []);
+
+  // The same portfolio keeps working after a reset.
+  const after = await call('POST', `/portfolios/${id}/deposit`, { amount: 50 });
+  assert.equal(after.data.cash, 50);
+  assert.equal(after.data.transactions.length, 1);
+  assert.equal((await call('POST', '/portfolios/missing/reset')).status, 404);
+});
+
 test('quote endpoint returns the Google Finance link', async () => {
   const { status, data } = await call('GET', '/quote?symbol=ko');
   assert.equal(status, 200);
