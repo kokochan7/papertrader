@@ -11,6 +11,9 @@ let portfolioId = null;
 let portfolio = null;
 let currentQuote = null;
 let refreshTimer = null;
+let tradeMode = 'shares'; // or 'dollars'
+let lookupSeq = 0;
+let lookupTimer = null;
 
 function storage(action, value) {
   try {
@@ -136,17 +139,23 @@ function renderQuote(q) {
   const box = $('quote');
   const change = q.previousClose ? q.price - q.previousClose : null;
   const owned = portfolio?.positions.find((p) => p.symbol === q.symbol);
+  const pct = change === null ? null : change / q.previousClose;
+  box.classList.remove('loading');
+  // Laid out like a Google Finance search result: ticker and name on the left, price and day change on the right.
   box.replaceChildren(
+    el('div', { class: 'head' },
+      el('div', {},
+        el('div', { class: 'sym' }, tickerLink(q.symbol, q.exchange, q.googleUrl)),
+        el('div', { class: 'name' }, `${q.name ? `${q.name} · ` : ''}${q.exchange} (US)`)),
+      el('div', { class: 'right' },
+        el('div', { class: 'price' }, usd.format(q.price)),
+        pct === null
+          ? null
+          : el('div', { class: `change ${signClass(change)}`, title: `${signed(change)} today` },
+              pctFmt.format(pct), el('span', { class: 'arrow', 'aria-hidden': 'true' }, change > 0 ? '↑' : '↓')))),
     el('div', { class: 'meta' },
-      el('span', {}, tickerLink(q.symbol, q.exchange, q.googleUrl), ` · ${q.exchange}`),
-      el('a', { href: q.googleUrl, target: '_blank', rel: 'noopener' }, 'View on Google Finance ↗')),
-    el('div', { class: 'name' }, q.name || ''),
-    el('div', { class: 'price' }, usd.format(q.price)),
-    el('div', { class: 'meta' },
-      change === null
-        ? el('span', { class: 'muted' }, '')
-        : el('span', { class: signClass(change) }, `${signed(change)} (${pctFmt.format(change / q.previousClose)}) today`),
-      el('span', { class: 'muted' }, owned ? `You own ${shareFmt.format(owned.shares)}` : 'You own 0')),
+      el('a', { href: q.googleUrl, target: '_blank', rel: 'noopener' }, 'View on Google Finance ↗'),
+      el('span', { class: 'muted' }, owned ? `You own ${shareFmt.format(owned.shares)} (${usd.format(owned.shares * q.price)})` : 'You own 0')),
   );
   box.hidden = false;
   $('trade-form').hidden = false;
@@ -154,14 +163,35 @@ function renderQuote(q) {
 }
 
 function updateEstimate() {
-  const shares = Number($('shares').value);
-  if (!currentQuote || !(shares > 0)) {
-    $('estimate').textContent = portfolio && currentQuote
-      ? `You can afford about ${shareFmt.format(Math.floor((portfolio.cash / currentQuote.price) * 100) / 100)} shares.`
-      : '';
+  const value = Number($('shares').value);
+  if (!currentQuote || !portfolio) {
+    $('estimate').textContent = '';
     return;
   }
-  $('estimate').textContent = `Estimated ${usd.format(shares * currentQuote.price)} · cash available ${usd.format(portfolio.cash)}`;
+  if (!(value > 0)) {
+    $('estimate').textContent = `You have ${usd.format(portfolio.cash)} cash, enough for about ${shareFmt.format(Math.floor((portfolio.cash / currentQuote.price) * 100) / 100)} shares.`;
+    return;
+  }
+  $('estimate').textContent = tradeMode === 'dollars'
+    ? `≈ ${shareFmt.format(Math.floor((value / currentQuote.price) * 1e4) / 1e4)} shares · cash available ${usd.format(portfolio.cash)}`
+    : `Estimated ${usd.format(value * currentQuote.price)} · cash available ${usd.format(portfolio.cash)}`;
+}
+
+function setTradeMode(mode) {
+  tradeMode = mode;
+  document.querySelectorAll('.segmented .seg').forEach((b) => {
+    const active = b.dataset.mode === mode;
+    b.classList.toggle('active', active);
+    b.setAttribute('aria-pressed', String(active));
+  });
+  const dollars = mode === 'dollars';
+  $('amount-label').textContent = dollars ? 'Amount in dollars' : 'Shares';
+  $('amount-prefix').hidden = !dollars;
+  $('shares').parentElement.classList.toggle('dollars', dollars);
+  $('shares').placeholder = dollars ? '500' : '10';
+  $('shares').min = dollars ? '0.01' : '0.0001';
+  $('shares').value = '';
+  updateEstimate();
 }
 
 // ---------- actions ----------
@@ -205,23 +235,28 @@ async function showApp() {
   }, REFRESH_MS);
 }
 
-async function lookUp() {
+// preview: true while typing (debounced, quieter errors, keeps focus in the symbol box).
+async function lookUp({ preview = false } = {}) {
+  clearTimeout(lookupTimer);
   const symbol = $('symbol').value.trim();
   if (!symbol) return;
+  const seq = ++lookupSeq;
   $('trade-error').textContent = '';
   $('trade-message').textContent = '';
-  await withBusy($('quote-form'), async () => {
-    try {
-      currentQuote = await api(`/quote?symbol=${encodeURIComponent(symbol)}`);
-      renderQuote(currentQuote);
-      $('shares').focus();
-    } catch (err) {
-      currentQuote = null;
-      $('quote').hidden = true;
-      $('trade-form').hidden = true;
-      $('trade-error').textContent = err.message;
-    }
-  });
+  $('quote').classList.add('loading');
+  try {
+    const quote = await api(`/quote?symbol=${encodeURIComponent(symbol)}`);
+    if (seq !== lookupSeq) return; // a newer lookup started while this one was in flight
+    currentQuote = quote;
+    renderQuote(currentQuote);
+    if (!preview) $('shares').focus();
+  } catch (err) {
+    if (seq !== lookupSeq) return;
+    currentQuote = null;
+    $('quote').hidden = true;
+    $('trade-form').hidden = true;
+    $('trade-error').textContent = preview ? `No match for "${symbol.toUpperCase()}" yet` : err.message;
+  }
 }
 
 $('setup-form').addEventListener('submit', async (e) => {
@@ -259,7 +294,22 @@ $('quote-form').addEventListener('submit', (e) => {
   lookUp();
 });
 
+$('symbol').addEventListener('input', () => {
+  clearTimeout(lookupTimer);
+  if (!$('symbol').value.trim()) {
+    lookupSeq++;
+    currentQuote = null;
+    $('quote').hidden = true;
+    $('trade-form').hidden = true;
+    $('trade-error').textContent = '';
+    return;
+  }
+  lookupTimer = setTimeout(() => lookUp({ preview: true }), 450);
+});
+
 $('shares').addEventListener('input', updateEstimate);
+
+document.querySelectorAll('.segmented .seg').forEach((b) => b.addEventListener('click', () => setTradeMode(b.dataset.mode)));
 
 $('trade-form').addEventListener('submit', async (e) => {
   e.preventDefault();
@@ -270,7 +320,11 @@ $('trade-form').addEventListener('submit', async (e) => {
     try {
       const result = await api(`/portfolios/${portfolioId}/trade`, {
         method: 'POST',
-        body: { symbol: `${currentQuote.symbol}:${currentQuote.exchange}`, side, shares: $('shares').value },
+        body: {
+          symbol: `${currentQuote.symbol}:${currentQuote.exchange}`,
+          side,
+          [tradeMode === 'dollars' ? 'dollars' : 'shares']: $('shares').value,
+        },
       });
       portfolio = result.portfolio;
       const t = result.trade;
