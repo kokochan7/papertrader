@@ -289,6 +289,74 @@ async function publicPlayer(db, name) {
   return { ...portfolio, returnPct: portfolio.deposited ? portfolio.gain / portfolio.deposited : 0 };
 }
 
+// ---------- admin ----------
+// The admin key is checked against a SHA-256 hash stored in the settings table, so the key itself
+// is never in the database or the repo.
+
+async function sha256Hex(text) {
+  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
+  return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, '0')).join('');
+}
+
+async function requireAdmin(request, db) {
+  const key = /^Bearer (.+)$/.exec(request.headers.get('Authorization') ?? '')?.[1];
+  const row = await db.prepare("SELECT value FROM settings WHERE key = 'admin_key_sha256'").first();
+  if (!row) throw new HttpError(403, 'Admin access is not set up');
+  if (!key) throw new HttpError(401, 'Enter the admin key');
+  const hash = await sha256Hex(key);
+  let diff = hash.length ^ row.value.length;
+  for (let i = 0; i < hash.length; i++) diff |= hash.charCodeAt(i) ^ row.value.charCodeAt(i);
+  if (diff !== 0) throw new HttpError(401, 'Wrong admin key');
+}
+
+async function adminPlayers(db) {
+  const { results } = await db.prepare('SELECT id FROM portfolios ORDER BY created_at DESC').all();
+  const players = await Promise.all(results.map((r) => getPortfolio(db, r.id)));
+  return {
+    players: players.map((p) => ({
+      id: p.id,
+      name: p.name,
+      createdAt: p.createdAt,
+      cash: p.cash,
+      deposited: p.deposited,
+      total: p.total,
+      returnPct: p.deposited ? p.gain / p.deposited : 0,
+      holdings: p.positions.length,
+      trades: p.transactions.filter((t) => t.type !== 'deposit').length,
+    })),
+  };
+}
+
+async function deletePortfolio(db, id) {
+  await db.batch(
+    ['transactions', 'holdings'].map((table) => db.prepare(`DELETE FROM ${table} WHERE portfolio_id = ?`).bind(id))
+      .concat(db.prepare('DELETE FROM portfolios WHERE id = ?').bind(id)),
+  );
+}
+
+async function adminRoute(request, db, parts) {
+  await requireAdmin(request, db);
+  const method = request.method;
+  if (parts.length === 3 && parts[2] === 'players' && method === 'GET') return json(await adminPlayers(db));
+  if (parts[2] === 'players' && parts[3]) {
+    const id = parts[3];
+    if (parts.length === 4 && method === 'DELETE') {
+      await loadPortfolio(db, id);
+      await deletePortfolio(db, id);
+      return json({ ok: true });
+    }
+    if (parts.length === 5 && method === 'POST' && parts[4] === 'name') {
+      await rename(db, id, await readBody(request));
+      return json({ ok: true });
+    }
+    if (parts.length === 5 && method === 'POST' && parts[4] === 'reset') {
+      await resetPortfolio(db, id);
+      return json({ ok: true });
+    }
+  }
+  throw new HttpError(404, 'Not found');
+}
+
 async function route(request, env) {
   const url = new URL(request.url);
   const parts = url.pathname.split('/').filter(Boolean); // ["api", ...]
@@ -299,6 +367,7 @@ async function route(request, env) {
   if (parts[1] === 'quote' && parts.length === 2 && method === 'GET') {
     return json(await quoteOrError(url.searchParams.get('symbol'), { fresh: url.searchParams.has('fresh') }));
   }
+  if (parts[1] === 'admin') return adminRoute(request, db, parts);
   if (parts[1] === 'leaderboard' && parts.length === 2 && method === 'GET') {
     return json(await leaderboard(db, url.searchParams.get('me')));
   }
@@ -312,10 +381,7 @@ async function route(request, env) {
       return json(await getPortfolio(db, id, { fresh: url.searchParams.has('fresh') }));
     }
     if (parts.length === 3 && method === 'DELETE') {
-      await db.batch(
-        ['transactions', 'holdings'].map((table) => db.prepare(`DELETE FROM ${table} WHERE portfolio_id = ?`).bind(id))
-          .concat(db.prepare('DELETE FROM portfolios WHERE id = ?').bind(id)),
-      );
+      await deletePortfolio(db, id);
       return json({ ok: true });
     }
     if (parts.length === 4 && method === 'POST' && parts[3] === 'name') {

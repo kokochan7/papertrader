@@ -221,6 +221,40 @@ test('public player view is read-only and hides the portfolio id', async () => {
   assert.equal((await call('POST', '/players/Viewer%20Test', { side: 'buy' })).status, 404);
 });
 
+test('admin routes need the admin key and can rename, reset and delete players', async () => {
+  const db = await mf.getD1Database('DB');
+  const adminCall = async (method, path, key, body) => {
+    const res = await mf.dispatchFetch(`${base}/api/admin${path}`, {
+      method,
+      headers: { 'Content-Type': 'application/json', ...(key ? { Authorization: `Bearer ${key}` } : {}) },
+      body: body === undefined ? undefined : JSON.stringify(body),
+    });
+    return { status: res.status, data: await res.json() };
+  };
+  assert.equal((await adminCall('GET', '/players', 'anything')).status, 403); // not set up yet
+
+  const hash = [...new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode('s3cret-key')))]
+    .map((b) => b.toString(16).padStart(2, '0')).join('');
+  await db.prepare("INSERT INTO settings (key, value) VALUES ('admin_key_sha256', ?)").bind(hash).run();
+
+  assert.equal((await adminCall('GET', '/players')).status, 401);
+  assert.equal((await adminCall('GET', '/players', 'wrong')).status, 401);
+  const id = (await call('POST', '/portfolios', { name: 'Admin Target', startingCash: 300 })).data.id;
+  const list = await adminCall('GET', '/players', 's3cret-key');
+  assert.equal(list.status, 200);
+  const target = list.data.players.find((p) => p.name === 'Admin Target');
+  assert.equal(target.id, id);
+  assert.equal(target.deposited, 300);
+
+  assert.equal((await adminCall('POST', `/players/${id}/name`, 's3cret-key', { name: 'Renamed' })).status, 200);
+  assert.equal((await call('GET', `/portfolios/${id}`)).data.name, 'Renamed');
+  assert.equal((await adminCall('POST', `/players/${id}/reset`, 's3cret-key')).status, 200);
+  assert.equal((await call('GET', `/portfolios/${id}`)).data.deposited, 0);
+  assert.equal((await adminCall('DELETE', `/players/${id}`, 'wrong')).status, 401);
+  assert.equal((await adminCall('DELETE', `/players/${id}`, 's3cret-key')).status, 200);
+  assert.equal((await call('GET', `/portfolios/${id}`)).status, 404);
+});
+
 test('quote endpoint returns the Google Finance link', async () => {
   const { status, data } = await call('GET', '/quote?symbol=msft');
   assert.equal(status, 200);
