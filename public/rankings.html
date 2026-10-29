@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Rankings · Kenny's Paper Trader</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><path d='M4 24l8-8 6 5 10-12' fill='none' stroke='%2316a34a' stroke-width='4' stroke-linecap='round' stroke-linejoin='round'/></svg>">
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="wrap">
+      <h1>Kenny's Paper Trader</h1>
+      <div class="top-actions">
+        <span class="muted small" id="updated"></span>
+        <button id="refresh" type="button">Refresh</button>
+        <a class="button-link" href="/">Trade</a>
+      </div>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <section class="card">
+      <h2>Rankings</h2>
+      <p class="muted small">Ranked by percent return on starting cash, so everyone competes fairly whatever they started with. Values use live prices.</p>
+      <div class="table-scroll">
+        <table id="rankings">
+          <thead><tr><th class="num">#</th><th>Player</th><th class="num">Return</th><th class="num">Total value</th><th class="num">Started with</th><th class="num">Stocks</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <p class="muted empty" id="no-players" hidden>No players yet. <a href="/">Be the first.</a></p>
+      <p class="error" id="error"></p>
+    </section>
+  </main>
+
+  <footer class="wrap muted small foot">
+    Anyone can play: open the site, pick a name and a starting amount. Simulated money only.
+  </footer>
+
+  <script src="/rankings.js" type="module"></script>
+</body>
+</html>

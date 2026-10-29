@@ -132,6 +132,11 @@ function render() {
   );
 
   $('share-link').value = `${location.origin}/?p=${portfolioId}`;
+  $('name-card').hidden = Boolean(p.name);
+  // One deposit per game: the Add cash box only shows while nothing has been added since the last Restart.
+  $('deposit-card').hidden = p.deposited > 0;
+  $('rank-card').hidden = !(p.deposited > 0);
+  if (p.deposited > 0) loadRank();
   updateEstimate();
 }
 
@@ -192,6 +197,23 @@ function setTradeMode(mode) {
   $('shares').min = dollars ? '0.01' : '0.0001';
   $('shares').value = '';
   updateEstimate();
+}
+
+async function loadRank() {
+  if (!portfolio?.name) {
+    $('rank-position').textContent = '–';
+    $('rank-detail').textContent = 'Pick a name above to appear in the rankings.';
+    return;
+  }
+  try {
+    const { players } = await api(`/leaderboard?me=${encodeURIComponent(portfolioId)}`);
+    const me = players.find((p) => p.you);
+    if (!me) return;
+    $('rank-position').textContent = `#${me.rank}`;
+    $('rank-detail').textContent = `of ${players.length} player${players.length === 1 ? '' : 's'} · ${portfolio.name} · ${pctFmt.format(me.returnPct)} return`;
+  } catch {
+    // Rankings are a nice-to-have here; the main page keeps working without them.
+  }
 }
 
 // ---------- actions ----------
@@ -264,13 +286,29 @@ $('setup-form').addEventListener('submit', async (e) => {
   $('setup-error').textContent = '';
   await withBusy(e.target, async () => {
     try {
-      const { id } = await api('/portfolios', { method: 'POST', body: { startingCash: $('starting-cash').value } });
+      const { id } = await api('/portfolios', {
+        method: 'POST',
+        body: { name: $('player-name').value, startingCash: $('starting-cash').value },
+      });
       portfolioId = id;
       storage('set', id);
       $('starting-cash').value = '';
       await showApp();
     } catch (err) {
       $('setup-error').textContent = err.message;
+    }
+  });
+});
+
+$('name-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  $('name-error').textContent = '';
+  await withBusy(e.target, async () => {
+    try {
+      portfolio = await api(`/portfolios/${portfolioId}/name`, { method: 'POST', body: { name: $('name-input').value } });
+      render();
+    } catch (err) {
+      $('name-error').textContent = err.message;
     }
   });
 });
@@ -370,7 +408,7 @@ $('refresh').addEventListener('click', async () => {
 });
 
 $('restart').addEventListener('click', async () => {
-  if (!confirm('Restart? This sets your cash to $0 and erases all holdings and history. It cannot be undone.')) return;
+  if (!confirm('Restart? This sets your cash to $0 and erases all holdings and history, then lets you add new starting cash. It cannot be undone.')) return;
   try {
     portfolio = await api(`/portfolios/${portfolioId}/reset`, { method: 'POST' });
   } catch (err) {
