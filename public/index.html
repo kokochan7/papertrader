@@ -3,15 +3,19 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Paper Trader</title>
+  <title>Kenny's Paper Trader</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><path d='M4 24l8-8 6 5 10-12' fill='none' stroke='%2316a34a' stroke-width='4' stroke-linecap='round' stroke-linejoin='round'/></svg>">
   <link rel="stylesheet" href="/styles.css">
 </head>
 <body>
   <header class="topbar">
     <div class="wrap">
-      <h1>Paper Trader</h1>
-      <span class="muted small" id="updated"></span>
+      <h1>Kenny's Paper Trader</h1>
+      <div class="top-actions">
+        <span class="muted small" id="updated"></span>
+        <button id="refresh" type="button" hidden>Refresh</button>
+        <button id="restart" type="button" class="danger" hidden>Restart</button>
+      </div>
     </div>
   </header>
 
@@ -95,7 +99,6 @@
           <p class="muted small">Your portfolio is saved on the server. This browser remembers it; open this link to get to it from another device.</p>
           <div class="row"><input id="share-link" type="text" readonly><button id="copy-link" type="button">Copy</button></div>
         </div>
-        <button id="reset" type="button" class="danger">Start over</button>
       </section>
     </div>
   </main>

@@ -166,9 +166,9 @@ function updateEstimate() {
 
 // ---------- actions ----------
 
-async function loadPortfolio() {
+async function loadPortfolio({ fresh = false } = {}) {
   try {
-    portfolio = await api(`/portfolios/${portfolioId}`);
+    portfolio = await api(`/portfolios/${portfolioId}${fresh ? '?fresh=1' : ''}`);
   } catch (err) {
     if (err.status === 404) {
       storage('clear');
@@ -186,6 +186,8 @@ function showSetup() {
   portfolio = null;
   clearInterval(refreshTimer);
   $('app').hidden = true;
+  $('refresh').hidden = true;
+  $('restart').hidden = true;
   $('setup').hidden = false;
   $('updated').textContent = '';
   $('starting-cash').focus();
@@ -194,6 +196,8 @@ function showSetup() {
 async function showApp() {
   $('setup').hidden = true;
   $('app').hidden = false;
+  $('refresh').hidden = false;
+  $('restart').hidden = false;
   await loadPortfolio();
   clearInterval(refreshTimer);
   refreshTimer = setInterval(() => {
@@ -293,19 +297,40 @@ $('copy-link').addEventListener('click', async () => {
   setTimeout(() => ($('copy-link').textContent = 'Copy'), 2000);
 });
 
-$('reset').addEventListener('click', async () => {
-  if (!confirm('Delete this portfolio and start over? This cannot be undone.')) return;
+$('refresh').addEventListener('click', async () => {
+  const button = $('refresh');
+  button.disabled = true;
+  button.textContent = 'Refreshing…';
   try {
-    await api(`/portfolios/${portfolioId}`, { method: 'DELETE' });
-  } catch {
-    // If the delete fails we still forget it locally so the user can start fresh.
+    await loadPortfolio({ fresh: true });
+    if (currentQuote) {
+      currentQuote = await api(`/quote?symbol=${encodeURIComponent(`${currentQuote.symbol}:${currentQuote.exchange}`)}&fresh=1`);
+      renderQuote(currentQuote);
+    }
+  } catch (err) {
+    $('updated').textContent = `Couldn't refresh: ${err.message}`;
+  } finally {
+    button.disabled = false;
+    button.textContent = 'Refresh';
   }
-  storage('clear');
+});
+
+$('restart').addEventListener('click', async () => {
+  if (!confirm('Restart? This sets your cash to $0 and erases all holdings and history. It cannot be undone.')) return;
+  try {
+    portfolio = await api(`/portfolios/${portfolioId}/reset`, { method: 'POST' });
+  } catch (err) {
+    alert(`Couldn't restart: ${err.message}`);
+    return;
+  }
   currentQuote = null;
   $('quote').hidden = true;
   $('trade-form').hidden = true;
   $('symbol').value = '';
-  showSetup();
+  $('trade-error').textContent = '';
+  $('trade-message').textContent = '';
+  render();
+  $('deposit-amount').focus();
 });
 
 // ---------- startup ----------
