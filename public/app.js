@@ -11,7 +11,7 @@ let portfolioId = null;
 let portfolio = null;
 let currentQuote = null;
 let refreshTimer = null;
-let tradeMode = 'shares'; // or 'dollars'
+let tradeMode = 'dollars'; // or 'shares'
 let lookupSeq = 0;
 let lookupTimer = null;
 

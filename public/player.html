@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Player · Kenny's Paper Trader</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><path d='M4 24l8-8 6 5 10-12' fill='none' stroke='%2316a34a' stroke-width='4' stroke-linecap='round' stroke-linejoin='round'/></svg>">
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="wrap">
+      <h1>Kenny's Paper Trader</h1>
+      <div class="top-actions">
+        <span class="muted small" id="updated"></span>
+        <button id="refresh" type="button">Refresh</button>
+        <a class="button-link" href="/rankings.html">Rankings</a>
+        <a class="button-link" href="/">Trade</a>
+      </div>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <section class="card player-head">
+      <h2 id="player-name">Player</h2>
+      <span class="badge">View only</span>
+    </section>
+    <p class="error" id="error"></p>
+
+    <div id="player" hidden>
+      <section class="stats">
+        <div class="stat"><span class="label">Total value</span><span class="value" id="stat-total">–</span></div>
+        <div class="stat"><span class="label">Cash</span><span class="value" id="stat-cash">–</span></div>
+        <div class="stat"><span class="label">Stocks</span><span class="value" id="stat-invested">–</span></div>
+        <div class="stat"><span class="label">Return</span><span class="value" id="stat-gain">–</span><span class="sub" id="stat-deposited"></span></div>
+      </section>
+
+      <section class="card">
+        <h2>Holdings</h2>
+        <div class="table-scroll">
+          <table id="holdings">
+            <thead><tr><th>Symbol</th><th class="num">Shares</th><th class="num">Avg cost</th><th class="num">Price</th><th class="num">Today</th><th class="num">Value</th><th class="num">Gain / loss</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+        <p class="muted empty" id="no-holdings">No stocks right now.</p>
+      </section>
+
+      <section class="card">
+        <h2>History</h2>
+        <div class="table-scroll">
+          <table id="history">
+            <thead><tr><th>When</th><th>Action</th><th class="num">Shares</th><th class="num">Price</th><th class="num">Amount</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <script src="/player.js" type="module"></script>
+</body>
+</html>
