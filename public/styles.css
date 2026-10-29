@@ -160,3 +160,5 @@ tbody tr:last-child td { border-bottom: 0; }
 .player-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .player-head h2 { margin: 0; font-size: 20px; overflow-wrap: anywhere; }
 .badge { font-size: 12px; font-weight: 600; color: var(--muted); border: 1px solid var(--border); border-radius: 999px; padding: 3px 10px; white-space: nowrap; }
+#players td.actions { display: flex; gap: 6px; }
+.small-btn { padding: 5px 10px; font-size: 13px; }

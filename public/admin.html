@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <title>Admin · Kenny's Paper Trader</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><path d='M4 24l8-8 6 5 10-12' fill='none' stroke='%2316a34a' stroke-width='4' stroke-linecap='round' stroke-linejoin='round'/></svg>">
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="wrap">
+      <h1>Kenny's Paper Trader</h1>
+      <div class="top-actions">
+        <span class="muted small" id="updated"></span>
+        <button id="refresh" type="button" hidden>Refresh</button>
+        <button id="sign-out" type="button" hidden>Sign out</button>
+        <a class="button-link" href="/rankings.html">Rankings</a>
+        <a class="button-link" href="/">Trade</a>
+      </div>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <section id="login" class="card setup" hidden>
+      <h2>Admin</h2>
+      <form id="login-form" class="row">
+        <input id="admin-key" type="password" placeholder="Admin key" autocomplete="current-password" required autofocus>
+        <button type="submit" class="primary">Sign in</button>
+      </form>
+      <p class="error" id="login-error"></p>
+    </section>
+
+    <section id="panel" class="card" hidden>
+      <h2>All players</h2>
+      <p class="muted small">"Copy link" copies the player's private link, which gives full control of their account. Opening it in this browser switches you to that player.</p>
+      <div class="table-scroll">
+        <table id="players">
+          <thead><tr><th>Player</th><th class="num">Return</th><th class="num">Total</th><th class="num">Started</th><th class="num">Stocks</th><th class="num">Trades</th><th>Joined</th><th></th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <p class="muted empty" id="no-players" hidden>No players yet.</p>
+      <p class="error" id="panel-error"></p>
+      <p class="success" id="panel-message"></p>
+    </section>
+  </main>
+
+  <script src="/admin.js" type="module"></script>
+</body>
+</html>

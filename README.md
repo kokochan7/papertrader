@@ -22,6 +22,7 @@ fits in Cloudflare's free tier.
 - **Refresh** button for up-to-the-second prices, and **Restart** to wipe everything back to $0
 - Every ticker links to its Google Finance page
 - Each browser gets its own portfolio; a private link opens it on another device
+- **Admin page** at `/admin.html` (key-protected): see every player, copy their private link, rename, reset or delete
 
 ## Where prices come from
 
@@ -55,6 +56,17 @@ npm run deploy
 
 If you ever point this at a fresh account, create a database first with
 `npx wrangler d1 create papertrader` and put the printed id in `wrangler.toml`.
+
+### Admin key
+
+The admin page checks a key against its SHA-256 hash in the `settings` table, so the key itself
+is never stored. To set or change it:
+
+```sh
+node -e "console.log(require('crypto').createHash('sha256').update(process.argv[1]).digest('hex'))" 'your-new-key'
+npx wrangler d1 execute papertrader --remote --command \
+  "INSERT OR REPLACE INTO settings (key, value) VALUES ('admin_key_sha256', '<hash from above>')"
+```
 
 ## Run it locally
 
