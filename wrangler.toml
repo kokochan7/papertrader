@@ -1,0 +1,15 @@
+name = "papertrader"
+main = "src/index.js"
+compatibility_date = "2025-09-01"
+
+# Static site (HTML/CSS/JS). Requests that don't match a file fall through to the Worker.
+[assets]
+directory = "./public"
+not_found_handling = "none"
+
+# Portfolio storage. Run `npx wrangler d1 create papertrader` and paste the id it prints here.
+[[d1_databases]]
+binding = "DB"
+database_name = "papertrader"
+database_id = "REPLACE_WITH_YOUR_D1_DATABASE_ID"
+migrations_dir = "migrations"

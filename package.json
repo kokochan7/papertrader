@@ -1,0 +1,17 @@
+{
+  "name": "papertrader",
+  "version": "1.0.0",
+  "description": "Paper trading website with real-time quotes from Google Finance, hosted on Cloudflare Workers",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler d1 migrations apply papertrader --local && wrangler dev",
+    "deploy": "wrangler d1 migrations apply papertrader --remote && wrangler deploy",
+    "test": "node --test test/*.test.js"
+  },
+  "license": "MIT",
+  "devDependencies": {
+    "miniflare": "4.20260730.0",
+    "wrangler": "4.156.0"
+  }
+}

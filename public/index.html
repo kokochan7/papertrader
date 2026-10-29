@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Paper Trader</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><path d='M4 24l8-8 6 5 10-12' fill='none' stroke='%2316a34a' stroke-width='4' stroke-linecap='round' stroke-linejoin='round'/></svg>">
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="wrap">
+      <h1>Paper Trader</h1>
+      <span class="muted small" id="updated"></span>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <!-- First visit: choose starting cash -->
+    <section id="setup" class="card setup" hidden>
+      <h2>Start a paper portfolio</h2>
+      <p class="muted">Pick how much simulated money to start with. You can add more any time.</p>
+      <form id="setup-form" class="row">
+        <label class="money-input"><span>$</span><input id="starting-cash" type="number" min="0.01" step="0.01" placeholder="10000" required autofocus></label>
+        <button type="submit" class="primary">Start trading</button>
+      </form>
+      <p class="error" id="setup-error"></p>
+    </section>
+
+    <div id="app" hidden>
+      <section class="stats">
+        <div class="stat"><span class="label">Total value</span><span class="value" id="stat-total">–</span></div>
+        <div class="stat"><span class="label">Cash</span><span class="value" id="stat-cash">–</span></div>
+        <div class="stat"><span class="label">Stocks</span><span class="value" id="stat-invested">–</span></div>
+        <div class="stat"><span class="label">Gain / loss</span><span class="value" id="stat-gain">–</span><span class="sub" id="stat-deposited"></span></div>
+      </section>
+
+      <div class="grid">
+        <section class="card">
+          <h2>Trade</h2>
+          <form id="quote-form" class="row">
+            <input id="symbol" type="text" placeholder="Symbol, e.g. AAPL" autocomplete="off" spellcheck="false" required>
+            <button type="submit">Get quote</button>
+          </form>
+          <div id="quote" class="quote" hidden></div>
+          <form id="trade-form" hidden>
+            <div class="row">
+              <label class="grow">Shares <input id="shares" type="number" min="0.0001" step="any" placeholder="10" required></label>
+            </div>
+            <p class="muted small" id="estimate"></p>
+            <div class="row">
+              <button type="submit" class="buy" data-side="buy">Buy</button>
+              <button type="submit" class="sell" data-side="sell">Sell</button>
+            </div>
+          </form>
+          <p class="error" id="trade-error"></p>
+          <p class="success" id="trade-message"></p>
+        </section>
+
+        <section class="card">
+          <h2>Add cash</h2>
+          <form id="deposit-form" class="row">
+            <label class="money-input grow"><span>$</span><input id="deposit-amount" type="number" min="0.01" step="0.01" placeholder="1000" required></label>
+            <button type="submit">Add</button>
+          </form>
+          <p class="error" id="deposit-error"></p>
+          <p class="muted small">Gain / loss is measured against all the cash you've added.</p>
+        </section>
+      </div>
+
+      <section class="card">
+        <h2>Holdings</h2>
+        <div class="table-scroll">
+          <table id="holdings">
+            <thead><tr><th>Symbol</th><th class="num">Shares</th><th class="num">Avg cost</th><th class="num">Price</th><th class="num">Today</th><th class="num">Value</th><th class="num">Gain / loss</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+        <p class="muted empty" id="no-holdings">No stocks yet. Look up a symbol above to make your first trade.</p>
+      </section>
+
+      <section class="card">
+        <h2>History</h2>
+        <div class="table-scroll">
+          <table id="history">
+            <thead><tr><th>When</th><th>Action</th><th class="num">Shares</th><th class="num">Price</th><th class="num">Amount</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="card footer-card">
+        <div>
+          <h2>Your portfolio link</h2>
+          <p class="muted small">Your portfolio is saved on the server. This browser remembers it; open this link to get to it from another device.</p>
+          <div class="row"><input id="share-link" type="text" readonly><button id="copy-link" type="button">Copy</button></div>
+        </div>
+        <button id="reset" type="button" class="danger">Start over</button>
+      </section>
+    </div>
+  </main>
+
+  <footer class="wrap muted small foot">
+    Prices come from Google Finance (with Yahoo Finance as a backup) and may be delayed. Simulated money only.
+  </footer>
+
+  <script src="/app.js" type="module"></script>
+</body>
+</html>
