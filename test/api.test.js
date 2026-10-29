@@ -117,6 +117,28 @@ test('fractional shares and input validation', async () => {
   assert.equal((await call('GET', '/portfolios/does-not-exist')).status, 404);
 });
 
+test('buying and selling by dollar amount converts to fractional shares', async () => {
+  const { data: { id } } = await call('POST', '/portfolios', { startingCash: 1000 });
+  // KO is $60: $100 buys 1.6666 shares (rounded down), costing $100.00 after rounding to cents.
+  let res = await call('POST', `/portfolios/${id}/trade`, { symbol: 'KO', side: 'buy', dollars: 100 });
+  assert.equal(res.status, 200, JSON.stringify(res.data));
+  assert.equal(res.data.trade.shares, 1.6666);
+  assert.equal(res.data.trade.amount, 100);
+  assert.equal(res.data.portfolio.cash, 900);
+
+  res = await call('POST', `/portfolios/${id}/trade`, { symbol: 'KO', side: 'buy', dollars: 5000 });
+  assert.equal(res.status, 400);
+  assert.match(res.data.error, /Not enough cash/);
+
+  // Selling the whole position's value in dollars sells every share.
+  res = await call('POST', `/portfolios/${id}/trade`, { symbol: 'KO', side: 'sell', dollars: 100 });
+  assert.equal(res.status, 200, JSON.stringify(res.data));
+  assert.equal(res.data.trade.shares, 1.6666);
+  assert.deepEqual(res.data.portfolio.positions, []);
+
+  assert.equal((await call('POST', `/portfolios/${id}/trade`, { symbol: 'KO', side: 'buy', dollars: 0.001 })).status, 400);
+});
+
 test('reset sets cash to $0 and clears holdings and history', async () => {
   const { data: { id } } = await call('POST', '/portfolios', { startingCash: 1000 });
   await call('POST', `/portfolios/${id}/trade`, { symbol: 'KO', side: 'buy', shares: 2 });

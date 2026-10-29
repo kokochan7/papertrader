@@ -48,8 +48,14 @@
           </form>
           <div id="quote" class="quote" hidden></div>
           <form id="trade-form" hidden>
+            <div class="segmented" role="group" aria-label="Trade by">
+              <button type="button" class="seg active" data-mode="shares" aria-pressed="true">Shares</button>
+              <button type="button" class="seg" data-mode="dollars" aria-pressed="false">Dollars</button>
+            </div>
             <div class="row">
-              <label class="grow">Shares <input id="shares" type="number" min="0.0001" step="any" placeholder="10" required></label>
+              <label class="grow"><span id="amount-label">Shares</span>
+                <span class="amount-input"><span class="prefix" id="amount-prefix" hidden>$</span><input id="shares" type="number" min="0.0001" step="any" placeholder="10" required></span>
+              </label>
             </div>
             <p class="muted small" id="estimate"></p>
             <div class="row">

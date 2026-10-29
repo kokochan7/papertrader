@@ -26,6 +26,10 @@
   }
 }
 
+@media (prefers-color-scheme: dark) {
+  button.buy, button.sell { color: #0f1216; }
+}
+
 * { box-sizing: border-box; }
 
 body {
@@ -88,9 +92,27 @@ button.sell { background: var(--down); border-color: var(--down); color: #fff; f
 button.danger { color: var(--danger); }
 
 .quote { border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px; }
-.quote .name { color: var(--muted); font-size: 13px; }
-.quote .price { font-size: 26px; font-weight: 600; font-variant-numeric: tabular-nums; }
-.quote .meta { display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap; font-size: 13px; }
+.quote.loading { opacity: 0.6; }
+.quote .head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+.quote .head > div { min-width: 0; }
+.quote .sym { font-size: 20px; font-weight: 700; }
+.quote .sym a { color: var(--text); }
+.quote .name { color: var(--muted); font-size: 13px; overflow-wrap: anywhere; }
+.quote .right { text-align: right; flex-shrink: 0; }
+.quote .price { font-size: 20px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.quote .change { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.quote .arrow { display: inline-grid; place-items: center; width: 20px; height: 20px; border-radius: 50%; color: #fff; font-size: 13px; line-height: 1; }
+.quote .change.up .arrow { background: var(--up); }
+.quote .change.down .arrow { background: var(--down); }
+.quote .change:not(.up):not(.down) .arrow { display: none; }
+.quote .meta { display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap; font-size: 13px; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border); }
+
+.segmented { display: inline-flex; border: 1px solid var(--border); border-radius: 8px; padding: 2px; gap: 2px; margin-bottom: 10px; }
+.segmented .seg { border: 0; padding: 6px 14px; font-size: 13px; background: transparent; color: var(--muted); }
+.segmented .seg.active { background: var(--bg); color: var(--text); }
+.amount-input { position: relative; display: flex; }
+.amount-input .prefix { position: absolute; left: 11px; top: 50%; transform: translateY(-50%); color: var(--muted); font-size: 15px; }
+.amount-input.dollars input { padding-left: 24px; }
 
 a { color: var(--accent); text-decoration: none; }
 a:hover { text-decoration: underline; }

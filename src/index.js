@@ -35,6 +35,12 @@ function toShares(value) {
   return shares;
 }
 
+// Whole number of 0.0001-share units the dollar amount buys, rounded down so it never costs more.
+function dollarsToShares(cents, price) {
+  const factor = 10 ** SHARE_DECIMALS;
+  return Math.floor((cents / 100 / price) * factor + 1e-9) / factor;
+}
+
 async function readBody(request) {
   try {
     return await request.json();
@@ -80,14 +86,23 @@ async function deposit(db, id, body) {
 async function trade(db, id, body) {
   const side = body.side;
   if (side !== 'buy' && side !== 'sell') throw new HttpError(400, 'side must be "buy" or "sell"');
-  const shares = toShares(body.shares);
+  const byDollars = body.dollars !== undefined && body.dollars !== null && body.dollars !== '';
+  const dollarCents = byDollars ? toCents(body.dollars) : null;
+  let shares = byDollars ? null : toShares(body.shares);
   const portfolio = await loadPortfolio(db, id);
   const quote = await quoteOrError(body.symbol, { fresh: true });
-  const amount = Math.round(shares * quote.price * 100);
   const holding = await db
     .prepare('SELECT * FROM holdings WHERE portfolio_id = ? AND symbol = ?')
     .bind(id, quote.symbol)
     .first();
+  if (byDollars) {
+    shares = dollarsToShares(dollarCents, quote.price);
+    // Selling "all of it" in dollars: a cent of rounding shouldn't leave a sliver behind or fail.
+    const owned = holding?.shares ?? 0;
+    if (side === 'sell' && shares > owned && dollarCents <= Math.round(owned * quote.price * 100) + 1) shares = owned;
+    if (shares <= 0) throw new HttpError(400, `$${(dollarCents / 100).toFixed(2)} is less than 0.0001 shares of ${quote.symbol}`);
+  }
+  const amount = Math.round(shares * quote.price * 100);
 
   const statements = [];
   if (side === 'buy') {
