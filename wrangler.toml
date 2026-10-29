@@ -1,0 +1,15 @@
+name = "papertrader"
+main = "src/index.js"
+compatibility_date = "2025-09-01"
+
+# Static site (HTML/CSS/JS). Requests that don't match a file fall through to the Worker.
+[assets]
+directory = "./public"
+not_found_handling = "none"
+
+# Portfolio storage (the "papertrader" D1 database in your Cloudflare account).
+[[d1_databases]]
+binding = "DB"
+database_name = "papertrader"
+database_id = "01550b9d-fa0e-4957-811e-4c7789928c0b"
+migrations_dir = "migrations"
