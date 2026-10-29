@@ -13,6 +13,7 @@
       <h1>Kenny's Paper Trader</h1>
       <div class="top-actions">
         <span class="muted small" id="updated"></span>
+        <a class="button-link" href="/rankings.html">Rankings</a>
         <button id="refresh" type="button" hidden>Refresh</button>
         <button id="restart" type="button" class="danger" hidden>Restart</button>
       </div>
@@ -22,16 +23,26 @@
   <main class="wrap">
     <!-- First visit: choose starting cash -->
     <section id="setup" class="card setup" hidden>
-      <h2>Start a paper portfolio</h2>
-      <p class="muted">Pick how much simulated money to start with. You can add more any time.</p>
-      <form id="setup-form" class="row">
-        <label class="money-input"><span>$</span><input id="starting-cash" type="number" min="0.01" step="0.01" placeholder="10000" required autofocus></label>
+      <h2>Start playing</h2>
+      <p class="muted">Pick a name for the <a href="/rankings.html">rankings</a> and how much simulated money to start with. You get one deposit per game, so choose wisely.</p>
+      <form id="setup-form" class="setup-form">
+        <label>Your name <input id="player-name" type="text" maxlength="24" placeholder="e.g. Kenny" autocomplete="nickname" required autofocus></label>
+        <label>Starting cash <span class="money-input"><span>$</span><input id="starting-cash" type="number" min="0.01" step="0.01" placeholder="10000" required></span></label>
         <button type="submit" class="primary">Start trading</button>
       </form>
       <p class="error" id="setup-error"></p>
     </section>
 
     <div id="app" hidden>
+      <section id="name-card" class="card" hidden>
+        <h2>Pick a name to join the rankings</h2>
+        <form id="name-form" class="row">
+          <input id="name-input" type="text" maxlength="24" placeholder="Your name" autocomplete="nickname" required>
+          <button type="submit" class="primary">Save</button>
+        </form>
+        <p class="error" id="name-error"></p>
+      </section>
+
       <section class="stats">
         <div class="stat"><span class="label">Total value</span><span class="value" id="stat-total">–</span></div>
         <div class="stat"><span class="label">Cash</span><span class="value" id="stat-cash">–</span></div>
@@ -67,14 +78,21 @@
           <p class="success" id="trade-message"></p>
         </section>
 
-        <section class="card">
+        <section class="card" id="rank-card" hidden>
+          <h2>Your ranking</h2>
+          <div class="rank-big" id="rank-position">–</div>
+          <p class="muted small" id="rank-detail"></p>
+          <p><a href="/rankings.html">See all rankings →</a></p>
+        </section>
+
+        <section class="card" id="deposit-card" hidden>
           <h2>Add cash</h2>
           <form id="deposit-form" class="row">
             <label class="money-input grow"><span>$</span><input id="deposit-amount" type="number" min="0.01" step="0.01" placeholder="1000" required></label>
             <button type="submit">Add</button>
           </form>
           <p class="error" id="deposit-error"></p>
-          <p class="muted small">Gain / loss is measured against all the cash you've added.</p>
+          <p class="muted small">You can add cash once per game. After that it's locked in until you Restart.</p>
         </section>
       </div>
 

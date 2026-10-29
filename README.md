@@ -1,8 +1,9 @@
 # Kenny's Paper Trader
 
-A paper trading website. Pick how much simulated cash to start with, add more whenever you like,
-type a stock symbol, and buy or sell at the current market price. Portfolios are saved in a
-database, so they're still there when you come back.
+A multiplayer paper trading website. Anyone can play: pick a name and how much simulated cash to
+start with, type a stock symbol, and buy or sell at the current market price. A public rankings
+page shows who's doing best. Portfolios are saved in a database, so they're still there when you
+come back.
 
 It runs on Cloudflare: a [Worker](https://developers.cloudflare.com/workers/) serves the page and
 the API, and a [D1](https://developers.cloudflare.com/d1/) database stores portfolios. Everything
@@ -10,7 +11,9 @@ fits in Cloudflare's free tier.
 
 ## Features
 
-- Start with any amount of simulated cash and add more at any time
+- Enter a name and any starting amount to play; no account needed
+- One deposit per game: the Add cash box disappears after your starting cash (Restart to play again)
+- Public **Rankings** page, ranked by percent return so different starting amounts compare fairly
 - Look up any US-listed stock or ETF by symbol (`AAPL`, `KO`, `BRK.B`, or `AAPL:NASDAQ`)
 - Buy and sell, including fractional shares, at the live price
 - Holdings with average cost, today's change, market value and gain/loss; prices refresh every 30 seconds
@@ -73,10 +76,12 @@ don't need a network connection or a Cloudflare account.
 | Method | Path | Body | |
 | --- | --- | --- | --- |
 | `GET` | `/api/quote?symbol=AAPL` | | Live quote (add `&fresh=1` to skip the 15s cache) |
-| `POST` | `/api/portfolios` | `{ "startingCash": 10000 }` | Create a portfolio, returns `{ id }` |
+| `POST` | `/api/portfolios` | `{ "name": "Kenny", "startingCash": 10000 }` | Create a portfolio, returns `{ id }` |
 | `GET` | `/api/portfolios/:id` | | Cash, positions with live prices, history (`?fresh=1` skips the cache) |
-| `POST` | `/api/portfolios/:id/deposit` | `{ "amount": 500 }` | Add cash |
-| `POST` | `/api/portfolios/:id/trade` | `{ "symbol": "AAPL", "side": "buy", "shares": 10 }` | Buy or sell at the current price |
+| `POST` | `/api/portfolios/:id/deposit` | `{ "amount": 500 }` | Add starting cash (only when nothing has been added since the last reset) |
+| `POST` | `/api/portfolios/:id/name` | `{ "name": "Kenny" }` | Set or change the player name |
+| `GET` | `/api/leaderboard?me=:id` | | Public rankings; `me` marks your own row (ids are never returned) |
+| `POST` | `/api/portfolios/:id/trade` | `{ "symbol": "AAPL", "side": "buy", "shares": 10 }` or `"dollars": 500` | Buy or sell at the current price |
 | `POST` | `/api/portfolios/:id/reset` | | Set cash to $0 and erase holdings and history |
 | `DELETE` | `/api/portfolios/:id` | | Delete the portfolio |
 

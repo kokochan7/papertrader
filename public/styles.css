@@ -45,7 +45,12 @@ body {
 .topbar .wrap { display: flex; align-items: center; flex-wrap: wrap; justify-content: space-between; gap: 12px; padding-top: 14px; padding-bottom: 14px; }
 h1 { font-size: 20px; margin: 0; }
 .top-actions { display: flex; align-items: center; gap: 8px; }
-.top-actions button { padding: 7px 14px; }
+.top-actions button, .button-link { padding: 7px 14px; }
+.button-link { font-weight: 600; border: 1px solid var(--border); border-radius: 8px; color: var(--text); }
+.button-link:hover { text-decoration: none; border-color: var(--muted); }
+.setup-form { display: grid; gap: 12px; margin-top: 12px; }
+.setup-form .money-input { flex: none; }
+.rank-big { font-size: 36px; font-weight: 700; font-variant-numeric: tabular-nums; }
 h2 { font-size: 16px; margin: 0 0 12px; }
 
 main.wrap { padding-top: 20px; padding-bottom: 20px; display: grid; gap: 16px; }
@@ -144,4 +149,11 @@ tbody tr:last-child td { border-bottom: 0; }
   .stats { grid-template-columns: repeat(2, 1fr); }
   .grid { grid-template-columns: 1fr; }
   .stat .value { font-size: 19px; }
+}
+
+#rankings tr.you td { background: color-mix(in srgb, var(--accent) 12%, transparent); font-weight: 600; }
+#rankings td.player { white-space: normal; overflow-wrap: break-word; min-width: 96px; }
+@media (max-width: 600px) {
+  #rankings th:nth-child(n+5), #rankings td:nth-child(n+5) { display: none; }
+  #rankings th, #rankings td { padding: 8px 6px; }
 }

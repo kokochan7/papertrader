@@ -64,19 +64,48 @@ async function quoteOrError(input, options) {
   }
 }
 
+// Player names show on the public rankings: 1-24 characters, unique ignoring case.
+function toName(value) {
+  const name = String(value ?? '').trim().replace(/\s+/g, ' ');
+  if (!name) throw new HttpError(400, 'Enter a name to play');
+  if (name.length > 24) throw new HttpError(400, 'Names can be at most 24 characters');
+  if (!/^[\p{L}\p{N} ._'-]+$/u.test(name)) throw new HttpError(400, 'Names can use letters, numbers, spaces and . _ \' -');
+  return name;
+}
+
+async function withUniqueName(name, write) {
+  try {
+    return await write();
+  } catch (err) {
+    if (/UNIQUE constraint failed/i.test(String(err?.message))) throw new HttpError(409, `"${name}" is taken. Try another name.`);
+    throw err;
+  }
+}
+
 async function createPortfolio(db, body) {
+  const name = toName(body.name);
   const cents = toCents(body.startingCash);
   const id = crypto.randomUUID();
-  await db.batch([
-    db.prepare('INSERT INTO portfolios (id, cash_cents, deposited_cents) VALUES (?, ?, ?)').bind(id, cents, cents),
-    db.prepare("INSERT INTO transactions (portfolio_id, type, amount_cents) VALUES (?, 'deposit', ?)").bind(id, cents),
-  ]);
+  await withUniqueName(name, () =>
+    db.batch([
+      db.prepare('INSERT INTO portfolios (id, name, cash_cents, deposited_cents) VALUES (?, ?, ?, ?)').bind(id, name, cents, cents),
+      db.prepare("INSERT INTO transactions (portfolio_id, type, amount_cents) VALUES (?, 'deposit', ?)").bind(id, cents),
+    ]),
+  );
   return { id };
 }
 
+async function rename(db, id, body) {
+  const name = toName(body.name);
+  await loadPortfolio(db, id);
+  await withUniqueName(name, () => db.prepare('UPDATE portfolios SET name = ? WHERE id = ?').bind(name, id).run());
+}
+
+// Cash can be added once per game: at the start, or again after a Restart.
 async function deposit(db, id, body) {
   const cents = toCents(body.amount);
-  await loadPortfolio(db, id);
+  const portfolio = await loadPortfolio(db, id);
+  if (portfolio.deposited_cents > 0) throw new HttpError(400, 'You already added your starting cash. Restart to begin a new game.');
   await db.batch([
     db.prepare('UPDATE portfolios SET cash_cents = cash_cents + ?1, deposited_cents = deposited_cents + ?1 WHERE id = ?2').bind(cents, id),
     db.prepare("INSERT INTO transactions (portfolio_id, type, amount_cents) VALUES (?, 'deposit', ?)").bind(id, cents),
@@ -185,6 +214,7 @@ async function getPortfolio(db, id, { fresh = false } = {}) {
   const deposited = portfolio.deposited_cents / 100;
   return {
     id,
+    name: portfolio.name,
     createdAt: portfolio.created_at,
     cash,
     deposited,
@@ -205,6 +235,48 @@ async function getPortfolio(db, id, { fresh = false } = {}) {
   };
 }
 
+// Public rankings by percent return, so players who started with different amounts compare fairly.
+// Never includes portfolio ids: an id is the key to a portfolio. `me` only marks the caller's own row.
+async function leaderboard(db, me) {
+  const [{ results: players }, { results: holdings }] = await Promise.all([
+    db.prepare('SELECT id, name, cash_cents, deposited_cents FROM portfolios WHERE name IS NOT NULL AND deposited_cents > 0').all(),
+    db.prepare(
+      'SELECT h.portfolio_id, h.symbol, h.exchange, h.shares, h.cost_cents FROM holdings h JOIN portfolios p ON p.id = h.portfolio_id WHERE p.name IS NOT NULL',
+    ).all(),
+  ]);
+  const listings = [...new Set(holdings.map((h) => `${h.symbol}:${h.exchange}`))];
+  const prices = new Map(
+    await Promise.all(listings.map(async (l) => [l, (await getQuote(l).catch(() => null))?.price ?? null])),
+  );
+  const byPlayer = new Map();
+  for (const h of holdings) {
+    const price = prices.get(`${h.symbol}:${h.exchange}`);
+    // If a price is unavailable, value the position at cost rather than dropping it.
+    const value = price === null ? h.cost_cents / 100 : h.shares * price;
+    const entry = byPlayer.get(h.portfolio_id) ?? { value: 0, count: 0 };
+    entry.value += value;
+    entry.count += 1;
+    byPlayer.set(h.portfolio_id, entry);
+  }
+  const rows = players.map((p) => {
+    const stocks = byPlayer.get(p.id) ?? { value: 0, count: 0 };
+    const deposited = p.deposited_cents / 100;
+    const total = p.cash_cents / 100 + stocks.value;
+    return {
+      name: p.name,
+      started: deposited,
+      total,
+      gain: total - deposited,
+      returnPct: (total - deposited) / deposited,
+      holdings: stocks.count,
+      you: p.id === me,
+    };
+  });
+  rows.sort((a, b) => b.returnPct - a.returnPct || b.total - a.total || a.name.localeCompare(b.name));
+  rows.forEach((r, i) => (r.rank = i + 1));
+  return { updatedAt: new Date().toISOString(), players: rows };
+}
+
 async function route(request, env) {
   const url = new URL(request.url);
   const parts = url.pathname.split('/').filter(Boolean); // ["api", ...]
@@ -214,6 +286,9 @@ async function route(request, env) {
 
   if (parts[1] === 'quote' && parts.length === 2 && method === 'GET') {
     return json(await quoteOrError(url.searchParams.get('symbol'), { fresh: url.searchParams.has('fresh') }));
+  }
+  if (parts[1] === 'leaderboard' && parts.length === 2 && method === 'GET') {
+    return json(await leaderboard(db, url.searchParams.get('me')));
   }
   if (parts[1] === 'portfolios') {
     if (parts.length === 2 && method === 'POST') return json(await createPortfolio(db, await readBody(request)), 201);
@@ -227,6 +302,10 @@ async function route(request, env) {
           .concat(db.prepare('DELETE FROM portfolios WHERE id = ?').bind(id)),
       );
       return json({ ok: true });
+    }
+    if (parts.length === 4 && method === 'POST' && parts[3] === 'name') {
+      await rename(db, id, await readBody(request));
+      return json(await getPortfolio(db, id));
     }
     if (parts.length === 4 && method === 'POST' && parts[3] === 'reset') {
       await resetPortfolio(db, id);
