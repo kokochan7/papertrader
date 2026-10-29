@@ -32,27 +32,24 @@ fetch a fresh price. Only US-dollar listings are supported so cash stays in one 
 
 ## Deploy to Cloudflare
 
-You need a free [Cloudflare account](https://dash.cloudflare.com/sign-up) and Node.js 18 or newer.
+The D1 database (`papertrader`) already exists and its id is in `wrangler.toml`.
+
+**Automatic deploys from GitHub (recommended):** in the Cloudflare dashboard go to
+**Workers & Pages → Create → Import a repository**, pick this repo, and set the deploy command to
+`npm run deploy`. Every push to `main` then applies any new database migrations and deploys.
+Your site will be at `https://papertrader.<your-subdomain>.workers.dev`; to use your own domain,
+add it under the Worker's **Settings → Domains & Routes**.
+
+**From your own computer:** with Node.js 18 or newer,
 
 ```sh
 npm install
-npx wrangler login                 # opens a browser to authorize Wrangler
-npx wrangler d1 create papertrader # prints a database_id
+npx wrangler login
+npm run deploy
 ```
 
-Paste the printed `database_id` into `wrangler.toml` (replacing `REPLACE_WITH_YOUR_D1_DATABASE_ID`), then:
-
-```sh
-npm run deploy   # creates the tables in D1, then deploys the Worker
-```
-
-Wrangler prints your site's address, something like `https://papertrader.<you>.workers.dev`.
-Run `npm run deploy` again after any change. To use your own domain, add it under the Worker's
-**Settings → Domains & Routes** in the Cloudflare dashboard.
-
-To deploy automatically on every push instead, commit the `database_id`, then in the Cloudflare
-dashboard go to **Workers & Pages → Create → Import a repository**, pick this repo, and set the
-deploy command to `npm run deploy`.
+If you ever point this at a fresh account, create a database first with
+`npx wrangler d1 create papertrader` and put the printed id in `wrangler.toml`.
 
 ## Run it locally
 

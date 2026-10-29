@@ -7,9 +7,9 @@ compatibility_date = "2025-09-01"
 directory = "./public"
 not_found_handling = "none"
 
-# Portfolio storage. Run `npx wrangler d1 create papertrader` and paste the id it prints here.
+# Portfolio storage (the "papertrader" D1 database in your Cloudflare account).
 [[d1_databases]]
 binding = "DB"
 database_name = "papertrader"
-database_id = "REPLACE_WITH_YOUR_D1_DATABASE_ID"
+database_id = "01550b9d-fa0e-4957-811e-4c7789928c0b"
 migrations_dir = "migrations"
