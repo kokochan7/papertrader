@@ -206,6 +206,21 @@ test('leaderboard ranks by percent return and never exposes portfolio ids', asyn
   assert.ok(!JSON.stringify(data).includes(big) && !JSON.stringify(data).includes(small));
 });
 
+test('public player view is read-only and hides the portfolio id', async () => {
+  const id = (await call('POST', '/portfolios', { name: 'Viewer Test', startingCash: 600 })).data.id;
+  await call('POST', `/portfolios/${id}/trade`, { symbol: 'KO:NYSE', side: 'buy', shares: 5 });
+  const { status, data } = await call('GET', `/players/${encodeURIComponent('viewer test')}`);
+  assert.equal(status, 200);
+  assert.equal(data.name, 'Viewer Test');
+  assert.equal(data.positions[0].symbol, 'KO');
+  assert.equal(data.deposited, 600);
+  assert.equal(data.id, undefined);
+  assert.ok(!JSON.stringify(data).includes(id));
+  assert.equal((await call('GET', '/players/nobody')).status, 404);
+  // There is no write route under /players.
+  assert.equal((await call('POST', '/players/Viewer%20Test', { side: 'buy' })).status, 404);
+});
+
 test('quote endpoint returns the Google Finance link', async () => {
   const { status, data } = await call('GET', '/quote?symbol=msft');
   assert.equal(status, 200);

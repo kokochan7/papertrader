@@ -14,6 +14,7 @@ fits in Cloudflare's free tier.
 - Enter a name and any starting amount to play; no account needed
 - One deposit per game: the Add cash box disappears after your starting cash (Restart to play again)
 - Public **Rankings** page, ranked by percent return so different starting amounts compare fairly
+- Click a name in the rankings to see that player's portfolio, view only
 - Look up any US-listed stock or ETF by symbol (`AAPL`, `KO`, `BRK.B`, or `AAPL:NASDAQ`)
 - Buy and sell, including fractional shares, at the live price
 - Holdings with average cost, today's change, market value and gain/loss; prices refresh every 30 seconds
@@ -80,6 +81,7 @@ don't need a network connection or a Cloudflare account.
 | `GET` | `/api/portfolios/:id` | | Cash, positions with live prices, history (`?fresh=1` skips the cache) |
 | `POST` | `/api/portfolios/:id/deposit` | `{ "amount": 500 }` | Add starting cash (only when nothing has been added since the last reset) |
 | `POST` | `/api/portfolios/:id/name` | `{ "name": "Kenny" }` | Set or change the player name |
+| `GET` | `/api/players/:name` | | Read-only view of a player's portfolio (no portfolio id) |
 | `GET` | `/api/leaderboard?me=:id` | | Public rankings; `me` marks your own row (ids are never returned) |
 | `POST` | `/api/portfolios/:id/trade` | `{ "symbol": "AAPL", "side": "buy", "shares": 10 }` or `"dollars": 500` | Buy or sell at the current price |
 | `POST` | `/api/portfolios/:id/reset` | | Set cash to $0 and erase holdings and history |

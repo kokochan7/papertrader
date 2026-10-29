@@ -277,6 +277,18 @@ async function leaderboard(db, me) {
   return { updatedAt: new Date().toISOString(), players: rows };
 }
 
+// Read-only view of a player's portfolio for the rankings page, looked up by name.
+// The portfolio id is the key that allows trading, so it is stripped before returning.
+async function publicPlayer(db, name) {
+  const row = await db
+    .prepare('SELECT id FROM portfolios WHERE name IS NOT NULL AND lower(name) = lower(?)')
+    .bind(String(name ?? '').trim())
+    .first();
+  if (!row) throw new HttpError(404, 'Player not found');
+  const { id, ...portfolio } = await getPortfolio(db, row.id);
+  return { ...portfolio, returnPct: portfolio.deposited ? portfolio.gain / portfolio.deposited : 0 };
+}
+
 async function route(request, env) {
   const url = new URL(request.url);
   const parts = url.pathname.split('/').filter(Boolean); // ["api", ...]
@@ -289,6 +301,9 @@ async function route(request, env) {
   }
   if (parts[1] === 'leaderboard' && parts.length === 2 && method === 'GET') {
     return json(await leaderboard(db, url.searchParams.get('me')));
+  }
+  if (parts[1] === 'players' && parts.length === 3 && method === 'GET') {
+    return json(await publicPlayer(db, decodeURIComponent(parts[2])));
   }
   if (parts[1] === 'portfolios') {
     if (parts.length === 2 && method === 'POST') return json(await createPortfolio(db, await readBody(request)), 201);

@@ -18,6 +18,15 @@ function cell(text, className = '') {
   return td;
 }
 
+function playerCell(p) {
+  const td = cell('', 'player');
+  const link = document.createElement('a');
+  link.href = `/player.html?name=${encodeURIComponent(p.name)}`;
+  link.textContent = p.name;
+  td.append(link, p.you ? ' (you)' : '');
+  return td;
+}
+
 async function load() {
   const button = $('refresh');
   button.disabled = true;
@@ -34,7 +43,7 @@ async function load() {
         const sign = p.returnPct > 0.00005 ? 'up' : p.returnPct < -0.00005 ? 'down' : '';
         tr.append(
           cell(medals[p.rank - 1] ?? String(p.rank), 'num'),
-          cell(p.you ? `${p.name} (you)` : p.name, 'player'),
+          playerCell(p),
           cell(pctFmt.format(p.returnPct), `num ${sign}`),
           cell(usd.format(p.total), 'num'),
           cell(usd.format(p.started), 'num'),
