@@ -1,66 +1,115 @@
-# Kenny's Paper Trader
+<div align="center">
 
-A multiplayer paper trading website. Anyone can play: pick a name and how much simulated cash to
-start with, type a stock symbol, and buy or sell at the current market price. A public rankings
-page shows who's doing best. Portfolios are saved in a database, so they're still there when you
-come back.
+# 📈 Kenny's Paper Trader
 
-It runs on Cloudflare: a [Worker](https://developers.cloudflare.com/workers/) serves the page and
-the API, and a [D1](https://developers.cloudflare.com/d1/) database stores portfolios. Everything
-fits in Cloudflare's free tier.
+**Trade real stocks with fake money, and race your friends to the top of the leaderboard.**
 
-## Features
+Live prices. Zero risk. No sign-up.
 
-- Enter a name and any starting amount to play; no account needed
-- One deposit per game: the Add cash box disappears after your starting cash (Restart to play again)
-- Public **Rankings** page, ranked by percent return so different starting amounts compare fairly
-- Click a name in the rankings to see that player's portfolio, view only
-- Look up any US-listed stock or ETF by symbol (`AAPL`, `KO`, `BRK.B`, or `AAPL:NASDAQ`)
-- Buy and sell, including fractional shares, at the live price
-- Holdings with average cost, today's change, market value and gain/loss; prices refresh every 30 seconds
-- Full trade and deposit history
-- **Refresh** button for up-to-the-second prices, and **Restart** to wipe everything back to $0
-- Every ticker links to its Google Finance page
-- Each browser gets its own portfolio; a private link opens it on another device
-- **Admin page** at `/admin.html` (key-protected): see every player, copy their private link, rename, reset or delete
+### [▶ Play now at papertrader.kennk.workers.dev](https://papertrader.kennk.workers.dev/)
 
-## Where prices come from
+![Kenny's Paper Trader: portfolio dashboard with live NVDA quote, holdings and ranking](docs/screenshot.png)
 
-Google Finance doesn't have an official API. The Worker reads the price straight from the public
-Google Finance quote page (for example `https://www.google.com/finance/quote/AAPL:NASDAQ`), which
-carries the live price in its markup. When you type a bare symbol it tries the US exchanges
-(NASDAQ, NYSE, NYSE Arca, NYSE American, Cboe BZX) to find the listing.
+</div>
 
-Scraping can break if Google changes its page or rate-limits Cloudflare's servers, so if Google
-returns no price the Worker falls back to Yahoo Finance's free chart endpoint. Either way the
-ticker still links to Google Finance. Quotes are cached for 15 seconds for display; trades always
-fetch a fresh price. Only US-dollar listings are supported so cash stays in one currency.
+---
 
-## Deploy to Cloudflare
+## Why you'll like it
 
-The D1 database (`papertrader`) already exists and its id is in `wrangler.toml`.
+Paper trading is the best way to learn the market without losing a cent. Kenny's Paper Trader keeps
+it simple: type a name, pick how much pretend cash you want, and start buying real stocks at real
+prices in under ten seconds.
 
-**Automatic deploys from GitHub (recommended):** in the Cloudflare dashboard go to
-**Workers & Pages → Create → Import a repository**, pick this repo, and set the deploy command to
-`npm run deploy`. Every push to `main` then applies any new database migrations and deploys.
-Your site will be at `https://papertrader.<your-subdomain>.workers.dev`; to use your own domain,
-add it under the Worker's **Settings → Domains & Routes**.
+- **⚡ Live market prices.** Type any US stock or ETF (`AAPL`, `NVDA`, `BRK.B`, `SPY`) and get the
+  current price instantly. Your portfolio re-prices itself every 30 seconds.
+- **💵 Start with any amount.** $1,000 or $1,000,000, it's your call. Trade in dollars or shares,
+  fractional shares included.
+- **🏆 Compete with friends.** A public leaderboard ranks every player by **percent return**, so
+  someone who started with $5k can beat someone who started with $500k.
+- **👀 Scout the competition.** Click any name on the leaderboard to see exactly what they're holding,
+  in read-only mode.
+- **📊 Know where you stand.** Total value, cash, average cost, today's move and gain/loss on every
+  position, plus a full trade history.
+- **🔗 One click to research.** Every ticker links straight to its Google Finance page.
+- **🙅 No account, no password.** Your browser remembers your portfolio. A private link opens it on
+  your phone or another computer.
+- **🔄 Fresh start anytime.** Hit **Restart** to wipe the slate clean and try a new strategy.
 
-**From your own computer:** with Node.js 18 or newer,
+## How to play
+
+1. Open **[papertrader.kennk.workers.dev](https://papertrader.kennk.workers.dev/)**.
+2. Enter a name for the rankings and your starting cash.
+3. Type a symbol, check the quote, and hit **Buy**.
+4. Watch the **Rankings** page and see how you stack up.
+
+> Each game gets one starting deposit, so everyone plays by the same rules. Want more cash? Restart
+> and pick a bigger number.
+
+## Built to be fast and free
+
+| | |
+| --- | --- |
+| **Runs on** | A single [Cloudflare Worker](https://developers.cloudflare.com/workers/) at the edge, close to every player |
+| **Stores data in** | [Cloudflare D1](https://developers.cloudflare.com/d1/), so portfolios are still there when you come back |
+| **Front end** | Plain HTML, CSS and JavaScript. No framework, no build step, loads instantly |
+| **Prices from** | Google Finance quote pages, with Yahoo Finance as an automatic backup |
+| **Costs** | $0. Everything fits in Cloudflare's free tier |
+
+<details>
+<summary><b>Where prices come from</b></summary>
+
+Google Finance doesn't have an official API, so the Worker reads the live price from the public
+Google Finance quote page (for example `https://www.google.com/finance/quote/AAPL:NASDAQ`). For a
+bare symbol it tries the US exchanges (NASDAQ, NYSE, NYSE Arca, NYSE American, Cboe BZX) to find the
+listing. If Google returns no price, it falls back to Yahoo Finance's free chart endpoint.
+
+Quotes are cached for 15 seconds for display; trades always fetch a fresh price. Only US-dollar
+listings are supported so cash stays in one currency. Prices may be delayed, and the money is
+simulated.
+
+</details>
+
+---
+
+## For developers
+
+### Run it locally
+
+Requires Node.js 18 or newer.
 
 ```sh
 npm install
-npx wrangler login
-npm run deploy
+npm run dev      # http://localhost:8787, using a local D1 database
 ```
 
-If you ever point this at a fresh account, create a database first with
-`npx wrangler d1 create papertrader` and put the printed id in `wrangler.toml`.
+### Tests
 
-### Admin key
+```sh
+npm test
+```
 
-The admin page checks a key against its SHA-256 hash in the `settings` table, so the key itself
-is never stored. To set or change it:
+The tests run the real Worker against a local D1 database with a fake Google Finance, so they need
+no network connection or Cloudflare account.
+
+### Deploy
+
+The D1 database (`papertrader`) already exists and its id is in `wrangler.toml`.
+
+- **From GitHub (recommended):** in the Cloudflare dashboard go to **Workers & Pages → Create →
+  Import a repository**, pick this repo, and every push to `main` deploys. To use your own domain,
+  add it under the Worker's **Settings → Domains & Routes**.
+- **From your computer:** `npx wrangler login`, then `npm run deploy` (applies new migrations, then
+  deploys).
+
+Pointing at a fresh Cloudflare account? Run `npx wrangler d1 create papertrader` first and put the
+printed id in `wrangler.toml`.
+
+<details>
+<summary><b>Admin page</b></summary>
+
+`/admin.html` lists every player and lets you copy their private link, rename, reset or delete them.
+It checks a key against its SHA-256 hash in the `settings` table, so the key itself is never
+stored. To set or change it:
 
 ```sh
 node -e "console.log(require('crypto').createHash('sha256').update(process.argv[1]).digest('hex'))" 'your-new-key'
@@ -68,23 +117,10 @@ npx wrangler d1 execute papertrader --remote --command \
   "INSERT OR REPLACE INTO settings (key, value) VALUES ('admin_key_sha256', '<hash from above>')"
 ```
 
-## Run it locally
+</details>
 
-```sh
-npm install
-npm run dev      # http://localhost:8787, using a local D1 database
-```
-
-## Tests
-
-```sh
-npm test
-```
-
-The tests run the real Worker against a local D1 database with a fake Google Finance, so they
-don't need a network connection or a Cloudflare account.
-
-## API
+<details>
+<summary><b>API reference</b></summary>
 
 | Method | Path | Body | |
 | --- | --- | --- | --- |
@@ -99,12 +135,19 @@ don't need a network connection or a Cloudflare account.
 | `POST` | `/api/portfolios/:id/reset` | | Set cash to $0 and erase holdings and history |
 | `DELETE` | `/api/portfolios/:id` | | Delete the portfolio |
 
-## Project layout
+</details>
+
+### Project layout
 
 ```
-public/          the web page (plain HTML, CSS and JavaScript)
+public/          the web pages (plain HTML, CSS and JavaScript)
 src/index.js     the Worker: API routes and portfolio logic
 src/quotes.js    Google Finance quotes, with the Yahoo Finance fallback
 migrations/      D1 database schema
 test/            tests (node --test)
+docs/            README assets
 ```
+
+## License
+
+MIT
