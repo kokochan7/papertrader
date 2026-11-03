@@ -6,7 +6,7 @@
 
 Live prices. Zero risk. 
 
-### [▶ Play now at papertrader.kennk.workers.dev](https://papertrader.kennk.workers.dev/)
+## [▶ papertrader.kennk.workers.dev](https://papertrader.kennk.workers.dev/)
 
 ![Kenny's Paper Trader: portfolio dashboard with live NVDA quote, holdings and ranking](docs/screenshot.png)
 
