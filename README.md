@@ -4,7 +4,7 @@
 
 **Trade real stocks with fake money, and race your friends to the top of the leaderboard.**
 
-Live prices. Zero risk. No sign-up.
+Live prices. Zero risk. 
 
 ### [▶ Play now at papertrader.kennk.workers.dev](https://papertrader.kennk.workers.dev/)
 
