@@ -33,7 +33,7 @@ prices in under ten seconds.
 - **🔗 One click to research.** Every ticker links straight to its Google Finance page.
 - **🙅 No account, no password.** Your browser remembers your portfolio. A private link opens it on
   your phone or another computer.
-- **🔄 Fresh start anytime.** Hit **Restart** to wipe the slate clean and try a new strategy.
+- **🔄 Change your mind.** Until your first trade, **Restart** lets you pick a different starting amount.
 
 ## How to play
 
@@ -42,8 +42,8 @@ prices in under ten seconds.
 3. Type a symbol, check the quote, and hit **Buy**.
 4. Watch the **Rankings** page and see how you stack up.
 
-> Each game gets one starting deposit, so everyone plays by the same rules. Want more cash? Restart
-> and pick a bigger number.
+> Each game gets one starting deposit, so everyone plays by the same rules. Once you've traded, your
+> game is locked in: Restart is only available before your first trade, and only the admin can reset after that.
 
 ## Built to be fast and free
 

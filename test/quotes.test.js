@@ -37,6 +37,7 @@ test('parseSymbol accepts bare and exchange-qualified symbols', () => {
   assert.deepEqual(parseSymbol('brk.b:nyse'), { symbol: 'BRK.B', exchange: 'NYSE' });
   assert.throws(() => parseSymbol('not a symbol!'), QuoteError);
   assert.throws(() => parseSymbol(''), QuoteError);
+  assert.throws(() => parseSymbol('AAPL:LON'), /US exchange/);
 });
 
 test('parseGoogleFinancePage reads price, name, currency and previous close', () => {
@@ -69,8 +70,9 @@ test('falls back to Yahoo when Google has no price', async () => {
 
 test('rejects unknown symbols and non-USD listings', async () => {
   await assert.rejects(getQuote('ZZZZ', { fetchImpl: fakeFetch() , now: MARKET_HOURS }), /No quote found/);
-  const fetchImpl = fakeFetch({ google: { 'SHOP:TSE': googlePage({ currency: 'CAD', symbol: 'SHOP' }) } });
-  await assert.rejects(getQuote('SHOP:TSE', { fetchImpl , now: MARKET_HOURS }), /only US-dollar/);
+  await assert.rejects(getQuote('SHOP:TSE', { fetchImpl: fakeFetch(), now: MARKET_HOURS }), /US exchange/);
+  const fetchImpl = fakeFetch({ google: { 'SHOP:NYSE': googlePage({ currency: 'CAD', symbol: 'SHOP' }) } });
+  await assert.rejects(getQuote('SHOP:NYSE', { fetchImpl, now: MARKET_HOURS }), /only US-dollar/);
 });
 
 test('caches quotes briefly unless fresh is requested', async () => {

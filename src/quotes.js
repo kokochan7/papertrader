@@ -31,6 +31,11 @@ export function parseSymbol(input) {
   const text = String(input ?? '').trim().toUpperCase();
   const match = /^([A-Z0-9][A-Z0-9.\-]{0,9})(?::([A-Z]{2,15}))?$/.exec(text);
   if (!match) throw new QuoteError(`"${input}" doesn't look like a stock symbol`);
+  // Only US listings. A US ticker names the same security on every US exchange, so a typed
+  // exchange can't swap in a different company that happens to share the ticker abroad.
+  if (match[2] && !US_EXCHANGES.includes(match[2])) {
+    throw new QuoteError(`${match[2]} isn't supported. Use a US exchange: ${US_EXCHANGES.join(', ')}`);
+  }
   return { symbol: match[1], exchange: match[2] ?? null };
 }
 
