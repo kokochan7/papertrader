@@ -75,6 +75,8 @@ async function withBusy(form, fn) {
 
 function render() {
   const p = portfolio;
+  // Restart is only allowed before the first trade of a game.
+  $('restart').hidden = p.transactions.some((t) => t.type !== 'deposit');
   $('stat-total').textContent = usd.format(p.total);
   $('stat-cash').textContent = usd.format(p.cash);
   $('stat-invested').textContent = usd.format(p.invested);
@@ -253,7 +255,6 @@ async function showApp() {
   $('setup').hidden = true;
   $('app').hidden = false;
   $('refresh').hidden = false;
-  $('restart').hidden = false;
   await loadPortfolio();
   clearInterval(refreshTimer);
   refreshTimer = setInterval(() => {
@@ -412,7 +413,7 @@ $('refresh').addEventListener('click', async () => {
 });
 
 $('restart').addEventListener('click', async () => {
-  if (!confirm('Restart? This sets your cash to $0 and erases all holdings and history, then lets you add new starting cash. It cannot be undone.')) return;
+  if (!confirm('Restart? This sets your cash to $0 so you can enter a different starting amount. Restart is only available before your first trade.')) return;
   try {
     portfolio = await api(`/portfolios/${portfolioId}/reset`, { method: 'POST' });
   } catch (err) {

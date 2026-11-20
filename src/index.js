@@ -1,4 +1,4 @@
-import { getQuote, QuoteError } from './quotes.js';
+import { getQuote, parseSymbol, QuoteError } from './quotes.js';
 
 // Each visitor gets their own portfolio, identified by a random id that the browser
 // keeps. Anyone with the id can open the portfolio, so it works like a private link.
@@ -119,7 +119,16 @@ async function trade(db, id, body) {
   const dollarCents = byDollars ? toCents(body.dollars) : null;
   let shares = byDollars ? null : toShares(body.shares);
   const portfolio = await loadPortfolio(db, id);
-  const quote = await quoteOrError(body.symbol, { fresh: true });
+  // A position is always priced at the listing it was bought on, whatever exchange is typed.
+  // Otherwise "XYZ:OTHER" could sell shares at a different listing's price.
+  let symbol;
+  try {
+    symbol = parseSymbol(body.symbol).symbol;
+  } catch (err) {
+    throw new HttpError(400, err.message);
+  }
+  const held = await db.prepare('SELECT exchange FROM holdings WHERE portfolio_id = ? AND symbol = ?').bind(id, symbol).first();
+  const quote = await quoteOrError(held ? `${symbol}:${held.exchange}` : body.symbol, { fresh: true });
   if (!quote.live) {
     // Outside market hours the only price we could get is the frozen 4 PM close. Trading on it
     // would let players buy at yesterday's price after news has already moved the stock.
@@ -176,8 +185,14 @@ async function trade(db, id, body) {
   return { side, symbol: quote.symbol, shares, price: quote.price, amount: amount / 100 };
 }
 
-async function resetPortfolio(db, id) {
+// Players can Restart only before their first trade (to fix a mistyped starting amount).
+// Once they've traded, wiping a losing game would make the rankings meaningless; the admin can still reset.
+async function resetPortfolio(db, id, { byAdmin = false } = {}) {
   await loadPortfolio(db, id);
+  if (!byAdmin) {
+    const traded = await db.prepare("SELECT 1 FROM transactions WHERE portfolio_id = ? AND type IN ('buy', 'sell') LIMIT 1").bind(id).first();
+    if (traded) throw new HttpError(400, "You can't Restart after you've started trading. Ask the site admin if you need a reset.");
+  }
   await db.batch([
     db.prepare('DELETE FROM transactions WHERE portfolio_id = ?').bind(id),
     db.prepare('DELETE FROM holdings WHERE portfolio_id = ?').bind(id),
@@ -355,7 +370,7 @@ async function adminRoute(request, db, parts) {
       return json({ ok: true });
     }
     if (parts.length === 5 && method === 'POST' && parts[4] === 'reset') {
-      await resetPortfolio(db, id);
+      await resetPortfolio(db, id, { byAdmin: true });
       return json({ ok: true });
     }
   }

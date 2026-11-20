@@ -157,9 +157,35 @@ test('buying and selling by dollar amount converts to fractional shares', async 
   assert.equal((await call('POST', `/portfolios/${id}/trade`, { symbol: 'KO', side: 'buy', dollars: 0.001 })).status, 400);
 });
 
+test('players can Restart only before their first trade', async () => {
+  const { data: { id } } = await call('POST', '/portfolios', { name: 'Ivy', startingCash: 1000 });
+  await call('POST', `/portfolios/${id}/trade`, { symbol: 'KO', side: 'buy', shares: 2 });
+  await call('POST', `/portfolios/${id}/trade`, { symbol: 'KO', side: 'sell', shares: 2 });
+  const refused = await call('POST', `/portfolios/${id}/reset`);
+  assert.equal(refused.status, 400);
+  assert.match(refused.data.error, /after you've started trading/);
+  const { data: p } = await call('GET', `/portfolios/${id}`);
+  assert.equal(p.transactions.length, 3);
+});
+
+test('exchange suffixes cannot reprice a position or reach non-US listings', async () => {
+  const { data: { id } } = await call('POST', '/portfolios', { name: 'Jack', startingCash: 10000 });
+  await call('POST', `/portfolios/${id}/trade`, { symbol: 'AAPL', side: 'buy', shares: 10 });
+  prices['AAPL:NYSE'] = 900; // a different (fake) listing with the same ticker at a higher price
+  try {
+    const sold = await call('POST', `/portfolios/${id}/trade`, { symbol: 'AAPL:NYSE', side: 'sell', shares: 10 });
+    assert.equal(sold.status, 200);
+    assert.equal(sold.data.trade.price, prices['AAPL:NASDAQ']); // priced at the NASDAQ listing it was bought on
+  } finally {
+    delete prices['AAPL:NYSE'];
+  }
+  const foreign = await call('POST', `/portfolios/${id}/trade`, { symbol: 'AAPL:LON', side: 'buy', shares: 1 });
+  assert.equal(foreign.status, 400);
+  assert.match(foreign.data.error, /US exchange/);
+});
+
 test('reset sets cash to $0 and clears holdings and history', async () => {
   const { data: { id } } = await call('POST', '/portfolios', { name: 'Eve', startingCash: 1000 });
-  await call('POST', `/portfolios/${id}/trade`, { symbol: 'KO', side: 'buy', shares: 2 });
   const { status, data: p } = await call('POST', `/portfolios/${id}/reset`);
   assert.equal(status, 200);
   assert.equal(p.cash, 0);
