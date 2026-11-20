@@ -104,6 +104,7 @@ button.danger { color: var(--danger); }
 .quote .sym a { color: var(--text); }
 .quote .name { color: var(--muted); font-size: 13px; overflow-wrap: anywhere; }
 .quote .right { text-align: right; flex-shrink: 0; }
+.quote .session { font-size: 12px; }
 .quote .price { font-size: 20px; font-weight: 600; font-variant-numeric: tabular-nums; }
 .quote .change { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 600; font-variant-numeric: tabular-nums; }
 .quote .arrow { display: inline-grid; place-items: center; width: 20px; height: 20px; border-radius: 50%; color: #fff; font-size: 13px; line-height: 1; }

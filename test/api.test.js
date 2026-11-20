@@ -12,6 +12,15 @@ function googlePage(symbol, price) {
 <body><div data-last-price="${price}" data-currency-code="USD"></div></body></html>`;
 }
 
+function yahooChart(listing, price) {
+  const [, exchange] = listing.split(':');
+  const now = Math.floor(Date.now() / 1000);
+  return { chart: { result: [{
+    meta: { regularMarketPrice: price, regularMarketTime: now - 600, currency: 'USD', exchangeName: exchange === 'NASDAQ' ? 'NMS' : 'NYQ' },
+    timestamp: [now - 60], indicators: { quote: [{ close: [price] }] },
+  }] } };
+}
+
 let mf;
 let base;
 
@@ -26,6 +35,10 @@ before(async () => {
       const m = /finance\/quote\/([^:]+):(.+)$/.exec(request.url);
       const key = m && `${decodeURIComponent(m[1])}:${m[2]}`;
       if (key && prices[key]) return new Response(googlePage(m[1], prices[key]));
+      // Outside market hours the Worker prices from Yahoo's extended-hours bars instead.
+      const y = /chart\/([^?]+)/.exec(request.url);
+      const listing = y && Object.keys(prices).find((k) => k.split(':')[0] === decodeURIComponent(y[1]));
+      if (listing) return Response.json(yahooChart(listing, prices[listing]));
       return new Response('<html></html>', { status: m ? 200 : 404 });
     },
   });

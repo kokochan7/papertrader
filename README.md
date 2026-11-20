@@ -52,7 +52,7 @@ prices in under ten seconds.
 | **Runs on** | A single [Cloudflare Worker](https://developers.cloudflare.com/workers/) at the edge, close to every player |
 | **Stores data in** | [Cloudflare D1](https://developers.cloudflare.com/d1/), so portfolios are still there when you come back |
 | **Front end** | Plain HTML, CSS and JavaScript. No framework, no build step, loads instantly |
-| **Prices from** | Google Finance quote pages, with Yahoo Finance as an automatic backup |
+| **Prices from** | Google Finance quote pages during market hours, Yahoo Finance for pre-market and after-hours |
 | **Costs** | $0. Everything fits in Cloudflare's free tier |
 
 <details>
@@ -62,6 +62,11 @@ Google Finance doesn't have an official API, so the Worker reads the live price 
 Google Finance quote page (for example `https://www.google.com/finance/quote/AAPL:NASDAQ`). For a
 bare symbol it tries the US exchanges (NASDAQ, NYSE, NYSE Arca, NYSE American, Cboe BZX) to find the
 listing. If Google returns no price, it falls back to Yahoo Finance's free chart endpoint.
+
+Outside regular market hours (9:30 AM to 4 PM New York time), the headline price on both sites is
+frozen at the last close while pre-market and after-hours trading carries on. So from 4 PM to 9:30 AM,
+and on weekends, prices and trades use the latest pre-market or after-hours trade from Yahoo Finance
+instead. If that price can't be fetched, trades are refused rather than filled at the stale close.
 
 Quotes are cached for 15 seconds for display; trades always fetch a fresh price. Only US-dollar
 listings are supported so cash stays in one currency. Prices may be delayed, and the money is

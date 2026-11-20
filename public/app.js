@@ -140,6 +140,9 @@ function render() {
   updateEstimate();
 }
 
+// Outside regular hours, prices (and trades) use the latest pre-market or after-hours trade.
+const SESSION_LABELS = { pre: 'Pre-market price', post: 'After-hours price', closed: 'Market closed · last trade' };
+
 function renderQuote(q) {
   const box = $('quote');
   const change = q.previousClose ? q.price - q.previousClose : null;
@@ -154,6 +157,7 @@ function renderQuote(q) {
         el('div', { class: 'name' }, `${q.name ? `${q.name} · ` : ''}${q.exchange} (US)`)),
       el('div', { class: 'right' },
         el('div', { class: 'price' }, usd.format(q.price)),
+        SESSION_LABELS[q.session] ? el('div', { class: 'session muted' }, SESSION_LABELS[q.session]) : null,
         pct === null
           ? null
           : el('div', { class: `change ${signClass(change)}`, title: `${signed(change)} today` },
