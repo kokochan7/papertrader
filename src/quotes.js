@@ -81,17 +81,52 @@ async function fromGoogle(symbol, exchange, fetchImpl) {
   return results.find(Boolean) ?? null;
 }
 
+// Which part of the US trading day `date` falls in, by New York wall-clock time:
+// 'pre' (4:00-9:30), 'regular' (9:30-16:00), 'post' (16:00-20:00) or 'closed' (overnight, weekends).
+// Exchange holidays read as a normal day; no shares trade then, so the last price stays correct.
+export function marketSession(date = new Date()) {
+  const parts = Object.fromEntries(
+    new Intl.DateTimeFormat('en-US', {
+      timeZone: 'America/New_York', weekday: 'short', hour: 'numeric', minute: 'numeric', hourCycle: 'h23',
+    }).formatToParts(date).map((p) => [p.type, p.value]),
+  );
+  if (parts.weekday === 'Sat' || parts.weekday === 'Sun') return 'closed';
+  const minutes = Number(parts.hour) * 60 + Number(parts.minute);
+  if (minutes >= 4 * 60 && minutes < 9 * 60 + 30) return 'pre';
+  if (minutes >= 9 * 60 + 30 && minutes < 16 * 60) return 'regular';
+  if (minutes >= 16 * 60 && minutes < 20 * 60) return 'post';
+  return 'closed';
+}
+
+// The most recent trade in a Yahoo chart response's 1-minute bars, or null if there are none.
+function lastBar(result) {
+  const times = result?.timestamp ?? [];
+  const closes = result?.indicators?.quote?.[0]?.close ?? [];
+  let best = null;
+  for (let i = 0; i < times.length; i++) {
+    if (closes[i] > 0 && (!best || times[i] > best.time)) best = { time: times[i], price: closes[i] };
+  }
+  return best;
+}
+
+// Yahoo's free chart endpoint. With 1-minute bars including pre/post market, it carries both
+// the regular-session price and the latest extended-hours trade.
 async function fromYahoo(symbol, fetchImpl) {
   const yahooSymbol = symbol.replace('.', '-'); // BRK.B -> BRK-B
-  const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(yahooSymbol)}?range=1d&interval=1d`;
+  const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(yahooSymbol)}?range=1d&interval=1m&includePrePost=true`;
   const res = await fetchImpl(url, { headers: BROWSER_HEADERS });
   if (!res.ok) return null;
-  const meta = (await res.json())?.chart?.result?.[0]?.meta;
+  const result = (await res.json())?.chart?.result?.[0];
+  const meta = result?.meta;
   if (!meta || !(meta.regularMarketPrice > 0)) return null;
+  const latest = lastBar(result);
+  const regularTime = meta.regularMarketTime ?? 0;
   return {
     symbol,
     exchange: YAHOO_EXCHANGES[meta.exchangeName] ?? meta.exchangeName ?? 'NASDAQ',
     price: meta.regularMarketPrice,
+    // A bar newer than the last regular-session trade is a pre-market or after-hours trade.
+    extendedPrice: latest && latest.time > regularTime ? latest.price : null,
     previousClose: meta.chartPreviousClose ?? meta.previousClose ?? null,
     currency: meta.currency ?? 'USD',
     name: meta.longName ?? meta.shortName ?? null,
@@ -99,27 +134,48 @@ async function fromYahoo(symbol, fetchImpl) {
   };
 }
 
-// Returns { symbol, exchange, name, price, previousClose, currency, source, googleUrl }.
+// Returns { symbol, exchange, name, price, previousClose, currency, source, session, live, googleUrl }.
+//
+// During regular market hours the price is Google Finance's last price (Yahoo if Google fails).
+// Outside them, Google and Yahoo's headline price is frozen at the 4 PM close while pre-market and
+// after-hours trading moves on, so the price comes from Yahoo's latest extended-hours trade instead.
+// `live` is false when that extended-hours price couldn't be fetched and the frozen price was used:
+// fine for showing a portfolio, but trades must refuse it.
+//
 // Pass { fresh: true } to skip the short-lived cache (used when placing trades).
-export async function getQuote(input, { fetchImpl = fetch, fresh = false } = {}) {
+export async function getQuote(input, { fetchImpl = fetch, fresh = false, now = new Date() } = {}) {
   const { symbol, exchange } = parseSymbol(input);
   const key = `${symbol}:${exchange ?? ''}`;
   const hit = cache.get(key);
-  if (!fresh && hit && Date.now() - hit.at < CACHE_TTL_MS) return hit.quote;
+  if (!fresh && hit && now.getTime() - hit.at < CACHE_TTL_MS) return hit.quote;
 
-  let quote = await fromGoogle(symbol, exchange, fetchImpl);
+  const session = marketSession(now);
+  let quote = null;
+  if (session !== 'regular') {
+    const yahoo = await fromYahoo(symbol, fetchImpl).catch(() => null);
+    if (yahoo) {
+      quote = { ...yahoo, price: yahoo.extendedPrice ?? yahoo.price, live: true };
+      if (exchange) quote.exchange = exchange;
+    }
+  }
   if (!quote) {
-    quote = await fromYahoo(symbol, fetchImpl).catch(() => null);
-    if (quote && exchange) quote.exchange = exchange; // keep the listing the user asked for
+    quote = await fromGoogle(symbol, exchange, fetchImpl);
+    if (!quote) {
+      quote = await fromYahoo(symbol, fetchImpl).catch(() => null);
+      if (quote && exchange) quote.exchange = exchange; // keep the listing the user asked for
+    }
+    if (quote) quote.live = session === 'regular';
   }
   if (!quote) throw new QuoteError(`No quote found for ${exchange ? `${symbol}:${exchange}` : symbol}`);
   if (quote.currency !== 'USD') {
     throw new QuoteError(`${symbol} trades in ${quote.currency}; only US-dollar listings are supported`);
   }
 
+  delete quote.extendedPrice;
+  quote.session = session;
   quote.googleUrl = googleFinanceUrl(quote.symbol, quote.exchange);
-  quote.at = new Date().toISOString();
-  cache.set(key, { at: Date.now(), quote });
+  quote.at = now.toISOString();
+  cache.set(key, { at: now.getTime(), quote });
   return quote;
 }
 

@@ -120,6 +120,11 @@ async function trade(db, id, body) {
   let shares = byDollars ? null : toShares(body.shares);
   const portfolio = await loadPortfolio(db, id);
   const quote = await quoteOrError(body.symbol, { fresh: true });
+  if (!quote.live) {
+    // Outside market hours the only price we could get is the frozen 4 PM close. Trading on it
+    // would let players buy at yesterday's price after news has already moved the stock.
+    throw new HttpError(503, `Couldn't get the ${quote.session === 'closed' ? 'latest' : 'extended-hours'} price for ${quote.symbol} right now. Try again in a minute.`);
+  }
   const holding = await db
     .prepare('SELECT * FROM holdings WHERE portfolio_id = ? AND symbol = ?')
     .bind(id, quote.symbol)
